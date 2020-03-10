@@ -5,7 +5,7 @@ import itertools
 import sys
 import textwrap
 import enum
-from datetime import datetime
+from datetime import datetime,timedelta
 import os
 import time
 import operator
@@ -91,14 +91,25 @@ def table(job_time_slot, job_event):
      status = ["RUN"] + ["IDLE"] + ["HOLD"]
      print("".join("{:<15}".format(h) for h in headers))
                 ##event sorted with order according to dates
-      for cluster_id in job_time_slot:
+     numberOfJobs = 0
+     summ = ['00:00:00','00:00:00','00:00:00']
+     for cluster_id in job_time_slot:
+            numberOfJobs = numberOfJobs + len(job_time_slot[cluster_id].keys())
             for job_id in job_time_slot[cluster_id]:
                     job_info = job_time_slot[cluster_id][job_id]
                     job_time_slot[cluster_id][job_id] =  sorted(job_info.items(),key = lambda date: datetime.strptime(date[1],"%Y-%m-%d %H:%M:%S"))
                     row = duration(job_time_slot[cluster_id][job_id], job_event)
-                    line = [str(cluster_id)] + [str(job_id)] + [str(row.get(key)) for key in status]
+                    time =[str(row.get(key)) for key in status]
+                    for i in range(len(time)):
+                        (h,m,s)= time[i].split(':')
+                        (h2,m2,s2)= summ[i].split(':')
+                        d = timedelta(hours=int(h), minutes=int(m), seconds=int(s))
+                        d2 = timedelta(hours=int(h2), minutes=int(m2), seconds=int(s2))
+                        summ[i] = str(d+d2)
+                    line = [str(cluster_id)] + [str(job_id)] + time
                     print( "".join("{:<15}".format(m) for m in line))
-
+     srm = "{} jobs; {} run time, {} idle time, {} held time\n".format(numberOfJobs,summ[0],summ[1],summ[2])
+     print(srm)
 
 
 def duration(job_time, job_event):
