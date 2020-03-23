@@ -80,10 +80,7 @@ def condor_log(event_logs = None):
                    dt_object = datetime.fromtimestamp(timestamp)
                    job_time_slot[cluster_id][job_id][str(job_status)] = dt_object.strftime("%Y-%m-%d %H:%M:%S")
 
-                table(job_time_slot,job_event )
-                #else:
-                 #   print("We found the the end of file")
-
+                table(job_time_slot,job_event)
 
 
 def table(job_time_slot, job_event):
