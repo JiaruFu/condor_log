@@ -83,10 +83,33 @@ def condor_log(event_logs=None):
             table(job_time_slot, job_event)
 
 
+class JobStatus(enum.Enum):
+    IDLE = "IDLE"
+    HELD = "HELD"
+    RUNNING = "RUN"
+    SUBMIT = "SUBMIT"
+    EXECUTE = "EXECUTE"
+    JOB_TERMINATED = "JOB_TERMINATED"
+    JOB_RELEASED = "JOB_RELEASED"
+    JOB_HELD = "JOB_HELD"
+
+    def __str__(self):
+        return self.value
+
+    @classmethod
+    def ordered(cls):
+        return (
+            cls.RUNNING,
+            cls.IDLE,
+            cls.HELD,
+        )
+
+
+HEADERS = ["CLUSTER"] + ["JOBS"] + list(JobStatus.ordered())
+
+
 def table(job_time_slot, job_event):
-    headers = ["CLUSTER"] + ["JOBS"] + ["RUN"] + ["IDLE"] + ["HOLD"]
-    status = ["RUN"] + ["IDLE"] + ["HOLD"]
-    print("".join("{:<15}".format(h) for h in headers))
+    print("".join("{:<15}".format(h) for h in HEADERS))
     ##event sorted with order according to dates
     numberOfJobs = 0
     summ = [None, None, None]
@@ -98,7 +121,7 @@ def table(job_time_slot, job_event):
                 job_info.items(), key=lambda date: date[1]
             )
             row = duration(job_time_slot[cluster_id][job_id], job_event)
-            time = [row.get(key) for key in status]
+            time = [row.get(key) for key in list(JobStatus.ordered())]
             for i in range(len(time)):
                 if summ[i] == None:
                     summ[i] = time[i]
@@ -116,34 +139,42 @@ def table(job_time_slot, job_event):
 def duration(job_time, job_event):
     event = dict((e, False) for e in job_event)
     next_event = {}
-    impo_event = ["SUBMIT", "EXECUTE", "JOB_TERMINATED", "JOB_RELEASED", "JOB_HELD"]
-    duration = {"IDLE": None, "HOLD": None, "RUN": None}
+    duration = dict(zip(list(JobStatus.ordered()), [None, None, None]))
     for i in range(len(job_time)):
         if (i + 1) < len(job_time) and event[job_time[i][0]] == False:
-            if job_time[i][0] == "JOB_HELD":
+            if job_time[i][0] == JobStatus.JOB_HELD.value:
                 j = i
-                while job_time[j][0] not in impo_event or job_time[j][0] == "JOB_HELD":
+                while (
+                    job_time[j][0] not in JobStatus._value2member_map_
+                    or job_time[j][0] == JobStatus.JOB_HELD.value
+                ):
                     event[job_time[j][0]] = True
                     if (j + 1) < len(job_time):
                         diff = job_time[j + 1][1] - job_time[j][1]
-                        duration["HOLD"] = (
+
+                        duration[JobStatus.HELD] = (
                             diff
-                            if duration["HOLD"] == None
-                            else duration["HOLD"] + diff
+                            if duration[JobStatus.HELD] == None
+                            else duration[JobStatus.HELD] + diff
                         )
                         j = j + 1
                     else:
                         break
                 continue
 
-            if job_time[i][0] == "EXECUTE":
+            if job_time[i][0] == JobStatus.EXECUTE.value:
                 j = i
-                while job_time[j][0] not in impo_event or job_time[j][0] == "EXECUTE":
+                while (
+                    job_time[j][0] not in JobStatus._value2member_map_
+                    or job_time[j][0] == JobStatus.EXECUTE.value
+                ):
                     event[job_time[j][0]] = True
                     if (j + 1) < len(job_time):
                         diff = job_time[j + 1][1] - job_time[j][1]
-                        duration["RUN"] = (
-                            diff if duration["RUN"] == None else duration["RUN"] + diff
+                        duration[JobStatus.RUNNING] = (
+                            diff
+                            if duration[JobStatus.RUNNING] == None
+                            else duration[JobStatus.RUNNING] + diff
                         )
                         j = j + 1
                     else:
@@ -152,29 +183,13 @@ def duration(job_time, job_event):
 
             event[job_time[i][0]] = True
             diff = job_time[i + 1][1] - job_time[i][1]
-            duration["IDLE"] = (
-                diff if duration["IDLE"] == None else duration["IDLE"] + diff
+            duration[JobStatus.IDLE] = (
+                diff
+                if duration[JobStatus.IDLE] == None
+                else duration[JobStatus.IDLE] + diff
             )
 
     return duration
-
-
-# def parse_runtime(runtime_string: str) -> datetime.timedelta:
-#    (_, usr_days, usr_hms), (_, sys_days, sys_hms) = [
-#        s.split() for s in runtime_string.split(",")
-#    ]
-
-#    usr_h, usr_m, usr_s = usr_hms.split(":")
-#    sys_h, sys_m, sys_s = sys_hms.split(":")
-
-#    usr_time = datetime.timedelta(
-#        days=int(usr_days), hours=int(usr_h), minutes=int(usr_m), seconds=int(usr_s),
-#    )
-#    sys_time = datetime.timedelta(
-#        days=int(sys_days), hours=int(sys_h), minutes=int(sys_m), seconds=int(sys_s),
-#    )
-
-#    return usr_time + sys_time
 
 
 if __name__ == "__main__":
