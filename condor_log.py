@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import os
 import time
 import operator
+import graph
 
 import htcondor
 import classad
@@ -109,6 +110,7 @@ HEADERS = ["CLUSTER"] + ["JOBS"] + list(JobStatus.ordered())
 
 
 def table(job_time_slot, job_event):
+    graph.graph(job_time_slot)
     print("".join("{:<15}".format(h) for h in HEADERS))
     ##event sorted with order according to dates
     numberOfJobs = 0
@@ -129,7 +131,8 @@ def table(job_time_slot, job_event):
                     if time[i] != None:
                         summ[i] = summ[i] + time[i]
             line = [str(cluster_id)] + [str(job_id)] + time
-            print("".join("{:<15}".format(m) for m in line))
+            
+            print("".join("{:<15}".format(str(m)) for m in line))
     srm = "{} jobs; {} run time, {} idle time, {} held time\n".format(
         numberOfJobs, summ[0], summ[1], summ[2]
     )
@@ -194,3 +197,4 @@ def duration(job_time, job_event):
 
 if __name__ == "__main__":
     cli()
+

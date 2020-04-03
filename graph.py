@@ -5,60 +5,53 @@ import itertools
 import sys
 import textwrap
 import enum
-from datetime import datetime,timedelta
+import datetime
 import os
 import time
 import operator
+import pandas as pd
 
 
-from bokeh.io import output_file, show
-from bokeh.models import ColumnDataSource
-from bokeh.palettes import GnBu7, OrRd3
-from bokeh.plotting import figure
-from bokeh.models import DatetimeTickFormatter
+import altair as alt
+import altair_viewer
 
 datetimeFormat = '%Y-%m-%d %H:%M:%S'
 
 def graph(time):
-    output_file("graph.html")
     
-    jobs = []
-    events = []
-    schedule = {}
+    
+    schedule = []
+    jobs = {}
     for cluster_id in time:
         for job in time[cluster_id]:
-            jobs.append(str(cluster_id)+'.'+str(job))
-            for sch in time[cluster_id][job]:
-                if sch[0] not in schedule.keys():
-                    events.append(sch[0])
-                    schedule[sch[0]] = []
-                    schedule[sch[0]].append(datetime.strptime(sch[1],datetimeFormat))
-                else:
-                    schedule[sch[0]].append(datetime.strptime(sch[1],datetimeFormat))
-    schedule['jobs'] = jobs
+            events = list(time[cluster_id][job].keys())
+         
+            for i in range(len(events)):
+                    jobs['Job'] = str(cluster_id)+'.'+str(job)
+                    jobs['Begin'] = time[cluster_id][job][events[i]]
+                    if (i+1) < len(events):
+                        jobs['End'] = time[cluster_id][job][events[i+1]]
+                    else:
+                        jobs['End'] = time[cluster_id][job][events[i]] + datetime.timedelta( seconds=10, hours=0)
+                    jobs['Status'] = events[i]
+                    schedule.append(jobs)
+                    jobs = {}
+    schedule = pd.DataFrame(schedule)
+    print(schedule)
     
-    p = figure(y_range=jobs, plot_height=250, plot_width=1000, title="job schedule",
-                 toolbar_location=None)
+    chart = alt.Chart(schedule).mark_bar(clip=True).encode(
+           y=alt.Y('Job'),
+           x= 'yearmonthdatehoursminutesseconds(Begin)',
+           x2 = 'yearmonthdatehoursminutesseconds(End)',
+           color='Status', 
+           tooltip=['Job','Status', alt.Tooltip('yearmonthdatehoursminutesseconds(Begin)',title = 'Begin' ),  alt.Tooltip('yearmonthdatehoursminutesseconds(End)',title = 'End' )]
+       ).interactive().properties(width=800, height=300, title='Submission Timeline')
+       
+    chart.encoding.x.title = 'Job Duration'
+    chart.show()
 
-    p.hbar_stack(events, y='jobs', height=0.9,color=GnBu7,      source=ColumnDataSource(schedule),legend_label=["%s" % x for x in events])
-    xformatter = DatetimeTickFormatter( seconds=[datetimeFormat],
-            minutes=[datetimeFormat],
-            hours=[datetimeFormat],
-            days=[datetimeFormat],
-            months=[datetimeFormat],
-            years=[datetimeFormat],)
-
-    p.xaxis.formatter = xformatter
-               
-    p.y_range.range_padding = 0.1
-    p.ygrid.grid_line_color = None
-    p.legend.location = "top_left"
-    p.axis.minor_tick_line_color = None
-    p.outline_line_color = None
-
-    show(p)
-    
+   
 
 if __name__ == "__main__":
-    time = {12729372: {0: [('SUBMIT', '2020-03-12 14:43:48'), ('JOB_HELD', '2020-03-12 14:44:02'), ('JOB_RELEASED', '2020-03-12 14:44:09'), ('EXECUTE', '2020-03-12 14:45:47'), ('IMAGE_SIZE', '2020-03-12 14:45:56'), ('JOB_TERMINATED', '2020-03-12 14:48:48'), ('FILE_TRANSFER', '2020-03-12 14:48:48')], 1: [('SUBMIT', '2020-03-12 14:43:48'), ('JOB_HELD', '2020-03-12 14:44:02'), ('JOB_RELEASED', '2020-03-12 14:44:09'), ('EXECUTE', '2020-03-12 14:45:48'), ('JOB_TERMINATED', '2020-03-12 14:48:48'), ('IMAGE_SIZE', '2020-03-12 14:48:48'), ('FILE_TRANSFER', '2020-03-12 14:48:48')], 2: [('SUBMIT', '2020-03-12 14:43:48'), ('JOB_HELD', '2020-03-12 14:44:02'), ('JOB_RELEASED', '2020-03-12 14:44:09'), ('EXECUTE', '2020-03-12 14:45:53'), ('IMAGE_SIZE', '2020-03-12 14:46:02'), ('JOB_TERMINATED', '2020-03-12 14:48:53'), ('FILE_TRANSFER', '2020-03-12 14:48:53')]}}
+    time = {12783383: {0: {'SUBMIT': datetime.datetime(2020, 3, 31, 14, 13, 29), 'FILE_TRANSFER': datetime.datetime(2020, 3, 31, 14, 17, 19), 'EXECUTE': datetime.datetime(2020, 3, 31, 14, 14, 18), 'IMAGE_SIZE': datetime.datetime(2020, 3, 31, 14, 14, 27), 'JOB_TERMINATED': datetime.datetime(2020, 3, 31, 14, 17, 19)}, 1: {'SUBMIT': datetime.datetime(2020, 3, 31, 14, 13, 29), 'FILE_TRANSFER': datetime.datetime(2020, 3, 31, 14, 17, 19), 'EXECUTE': datetime.datetime(2020, 3, 31, 14, 14, 19), 'IMAGE_SIZE': datetime.datetime(2020, 3, 31, 14, 14, 27), 'JOB_TERMINATED': datetime.datetime(2020, 3, 31, 14, 17, 19)}, 2: {'SUBMIT': datetime.datetime(2020, 3, 31, 14, 13, 29), 'FILE_TRANSFER': datetime.datetime(2020, 3, 31, 14, 17, 18), 'EXECUTE': datetime.datetime(2020, 3, 31, 14, 14, 18), 'IMAGE_SIZE': datetime.datetime(2020, 3, 31, 14, 14, 27), 'JOB_TERMINATED': datetime.datetime(2020, 3, 31, 14, 17, 18)}}}
     graph(time)
