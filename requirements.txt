@@ -1,0 +1,2 @@
+altair==4.1.0
+altair-viewer==0.3.0
