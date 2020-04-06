@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+TAG=condor_log
+
+docker build -t ${TAG} .
+docker run -it --rm --mount type=bind,source="$PWD",target=/home/jovyan/condor_log -p 8888:8888 ${TAG} $@

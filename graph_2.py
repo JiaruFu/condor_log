@@ -46,10 +46,11 @@ def graph(time):
            color='Status',
            tooltip=['Job','Status', 'Begin:O', 'End:O']
        ).interactive().properties(width=800, height=300)
-    chart.show()
+
+    return chart
 
    
 
 if __name__ == "__main__":
     time = {12729372: {0: {'SUBMIT': datetime.datetime(2020, 3, 12, 14, 43, 48), 'JOB_HELD': datetime.datetime(2020, 3, 12, 14, 44, 2), 'JOB_RELEASED': datetime.datetime(2020, 3, 12, 14, 44, 9), 'FILE_TRANSFER': datetime.datetime(2020, 3, 13, 14, 48, 48), 'EXECUTE': datetime.datetime(2020, 3, 12, 14, 45, 47), 'IMAGE_SIZE': datetime.datetime(2020, 3, 12, 14, 45, 56), 'JOB_TERMINATED': datetime.datetime(2020, 3, 13, 14, 48, 48)}, 1: {'SUBMIT': datetime.datetime(2020, 3, 12, 14, 43, 48), 'JOB_HELD': datetime.datetime(2020, 3, 13, 14, 44, 2), 'JOB_RELEASED': datetime.datetime(2020, 3, 13, 14, 44, 9), 'FILE_TRANSFER': datetime.datetime(2020, 3, 13, 14, 48, 48), 'EXECUTE': datetime.datetime(2020, 3, 13, 14, 45, 48), 'IMAGE_SIZE': datetime.datetime(2020, 3, 13, 14, 48, 48), 'JOB_TERMINATED': datetime.datetime(2020, 3, 13, 14, 48, 48)}, 2: {'SUBMIT': datetime.datetime(2020, 3, 12, 14, 43, 48), 'JOB_HELD': datetime.datetime(2020, 3, 12, 14, 44, 2), 'JOB_RELEASED': datetime.datetime(2020, 3, 12, 14, 44, 9), 'FILE_TRANSFER': datetime.datetime(2020, 3, 13, 14, 48, 53), 'EXECUTE': datetime.datetime(2020, 3, 12, 14, 45, 53), 'IMAGE_SIZE': datetime.datetime(2020, 3, 12, 14, 46, 2), 'JOB_TERMINATED': datetime.datetime(2020, 3, 13, 14, 48, 53)}}}
-    graph(time)
+    graph(time).show()
