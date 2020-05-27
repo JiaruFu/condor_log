@@ -16,7 +16,7 @@ import classad
 
 datetimeFormat = "%Y-%m-%d %H:%M:%S"
 
-#####see how to satisfy the input argument; for example: proc=1 proc=2
+#### problem about the format thinggyyy: <Attributes>=<Values>
 ##Current input:
 #python condor_log_generic_info.py -file hello-chtc_13082167.log -attri MyType="SubmitEvent"
 ##The jobs with the attribute(s) MyType=SubmitEvent is/are: ['13082167.0', '13082167.1', '13082167.2']
@@ -75,9 +75,14 @@ def condor_log(event_logs=None, attributes = None):
             job_event = []
             returned_job = {}
             
+            new_attributes = {}
+            false_type_in = []
+            
             #change the format of the attributes
-            new_attributes = info.attri_format(attributes);
-               
+            #if the typed format does not satisfy the format <Attributes>=<Values>. Will tell the user it is incorrect.
+            if attributes is not None:
+                new_attributes, false_type_in = info.attri_format(attributes, false_type_in)
+                   
             for event in jel.events(0):               
                 job_status = event.type
                 
@@ -102,11 +107,13 @@ def condor_log(event_logs=None, attributes = None):
                 dt_object = datetime.fromtimestamp(timestamp)
                 job_time_slot[cluster_id][job_id][str(job_status)] = dt_object
                
-            #print("The jobs with the attribute(s) " + str(attributes) +" is/are: " + str(returned_job))
             #get certain job based on the attributes provided
-            for k in returned_job:
-                 print("The jobs with the attribute(s) " + k +" is/are: " + str(returned_job[k]))
-            print("\n")
+            if returned_job is not None:
+                for k in returned_job:
+                     print("The jobs with the attribute(s) " + k +" is/are: " + str(returned_job[k]))
+            
+            if len(false_type_in) > 0 :
+                 print("The typed arguments: "+str(false_type_in)+" is not in the right format. Please give a query in the format of: <Attributes>=<Values>")
             
             summaries.durationtable(job_time_slot, job_event)
         
@@ -226,47 +233,68 @@ class JobDurations:
     
     
 class info:
-    def attri_format(attributes):
+    def attri_format(attributes, false_type_in):
         new_attributes = {}
-       
+    
         for at in attributes:
-            splitted_at = at.split("=")
-            n = {splitted_at[0]:splitted_at[1]}
-            new_attributes.update(n)
-            
-        return new_attributes
+            if "=" in at:
+                ######problem about the format thinggyyy
+                splitted_at = at.split("=")
+                
+                #might have attributes with different values
+                if splitted_at[0] not in new_attributes.keys():
+                    temp = []
+                    temp.append(splitted_at[1])
+                    n = {splitted_at[0]:temp}
+                    new_attributes.update(n)
+                else:
+                    temp = new_attributes[splitted_at[0]]
+                    temp.append(splitted_at[1])
+                    n = {splitted_at[0]:temp}
+                    new_attributes.update(n)
+                    
+            else:
+                if at not in false_type_in:
+                    false_type_in.append(at)
+                 
+        return new_attributes,false_type_in
     
         
     def site_specific(event, attributes, returned_job):
-        string_event = str(event)
+        if attributes is not None:
+            string_event = str(event)
+
+            info_dic = {}
+            splitted_info = string_event .split("\n")
+            splitted_info = list(filter(None, splitted_info)) 
+            splitted_info = splitted_info[1:]
+
+            for detail in splitted_info:
+                lst = detail.split(" = ")
+                lst[1] = lst[1].strip('"')
+                lst[0] = lst[0].strip('"')
+                n = {lst[0]:lst[1]}
+                info_dic.update(n)
+
+            attri_keys = info_dic.keys();  
+
+            for at in attributes.keys():
+                if at in attri_keys:
+                    val = attributes[at]
+                    for e in val:
+                        if info_dic[at] == e:
+                            if str(at+"="+e) not in returned_job.keys():
+                                temp_job_list = []
+                                temp_job_list.append(str(event.cluster) + "."+ str(event.proc))
+                                returned_job[str(at+"="+e)] = temp_job_list
+                            else:
+                                temp_job_id = str(event.cluster) + "."+ str(event.proc)
+                                if temp_job_id not in returned_job[str(at+"="+e)]:
+                                    returned_job[str(at+"="+e)].append(temp_job_id)
+
+            return info_dic, returned_job
         
-        info_dic = {}
-        splitted_info = string_event .split("\n")
-        splitted_info = list(filter(None, splitted_info)) 
-        splitted_info = splitted_info[1:]
-        
-        for detail in splitted_info:
-            lst = detail.split(" = ")
-            lst[1] = lst[1].strip('"')
-            lst[0] = lst[0].strip('"')
-            n = {lst[0]:lst[1]}
-            info_dic.update(n)
-        
-        attri_keys = info_dic.keys();  
-       
-        for at in attributes.keys():
-            if at in attri_keys:
-                if info_dic[at] == attributes[at]:
-                    if str(at+"="+attributes[at]) not in returned_job.keys():
-                        temp_job_list = []
-                        temp_job_list.append(str(event.cluster) + "."+ str(event.proc))
-                        returned_job[str(at+"="+attributes[at])] = temp_job_list
-                    else:
-                        temp_job_id = str(event.cluster) + "."+ str(event.proc)
-                        if temp_job_id not in returned_job[str(at+"="+attributes[at])]:
-                            returned_job[str(at+"="+attributes[at])].append(temp_job_id)
-                
-        return info_dic, returned_job
+        return None, None
     
 
 if __name__ == "__main__":
